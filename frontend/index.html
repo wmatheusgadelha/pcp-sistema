@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCP — Qualimpel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1a5276;
+  --primary-light: #2980b9;
+  --accent: #e67e22;
+  --accent-light: #f39c12;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #e74c3c;
+  --info: #2980b9;
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --border: #dde1e7;
+  --text: #2c3e50;
+  --text-muted: #7f8c8d;
+  --sidebar-w: 220px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+/* ── LOGIN ── */
+#login-screen {
+  position:fixed; inset:0; background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%);
+  display:flex; align-items:center; justify-content:center; z-index:999;
+}
+.login-box { background:#fff; border-radius:16px; padding:48px 40px; width:360px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.login-logo { text-align:center; margin-bottom:32px; }
+.login-logo h1 { font-size:28px; color:var(--primary); font-weight:800; letter-spacing:-1px; }
+.login-logo p { color:var(--text-muted); font-size:13px; margin-top:4px; }
+.login-box input { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:8px;
+  font-size:14px; margin-bottom:14px; outline:none; transition:border .2s; }
+.login-box input:focus { border-color:var(--primary-light); }
+.login-box button { width:100%; padding:13px; background:var(--primary); color:#fff;
+  border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; transition:background .2s; }
+.login-box button:hover { background:var(--primary-light); }
+#login-error { color:var(--danger); font-size:13px; margin-top:8px; text-align:center; }
+
+/* ── LAYOUT ── */
+#app { display:none; height:100vh; overflow:hidden; }
+#sidebar {
+  position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-w);
+  background:var(--primary); display:flex; flex-direction:column; z-index:100;
+}
+.sidebar-header { padding:20px 18px; border-bottom:1px solid rgba(255,255,255,.1); }
+.sidebar-header h2 { color:#fff; font-size:18px; font-weight:800; letter-spacing:-0.5px; }
+.sidebar-header p { color:rgba(255,255,255,.6); font-size:11px; margin-top:2px; }
+.nav-section { padding:12px 0 4px; }
+.nav-section-title { color:rgba(255,255,255,.4); font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:1px; padding:0 18px 6px; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:10px 18px;
+  color:rgba(255,255,255,.75); cursor:pointer; transition:all .15s; font-size:13.5px; border-radius:0; }
+.nav-item:hover { background:rgba(255,255,255,.1); color:#fff; }
+.nav-item.active { background:rgba(255,255,255,.15); color:#fff; font-weight:600;
+  border-left:3px solid var(--accent); padding-left:15px; }
+.nav-icon { font-size:16px; width:20px; text-align:center; }
+.sidebar-footer { margin-top:auto; padding:16px 18px; border-top:1px solid rgba(255,255,255,.1); }
+.user-info { display:flex; align-items:center; gap:10px; }
+.user-avatar { width:34px; height:34px; background:rgba(255,255,255,.2);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-weight:700; font-size:14px; }
+.user-name { color:#fff; font-size:13px; font-weight:600; }
+.user-role { color:rgba(255,255,255,.5); font-size:11px; }
+.btn-logout { margin-top:10px; width:100%; padding:8px; background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.7); border:none; border-radius:6px; cursor:pointer; font-size:12px; }
+.btn-logout:hover { background:rgba(255,255,255,.2); color:#fff; }
+
+/* ── MAIN ── */
+#main { margin-left:var(--sidebar-w); height:100vh; overflow-y:auto; }
+.page { display:none; padding:28px 32px; }
+.page.active { display:block; }
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.page-title { font-size:22px; font-weight:700; color:var(--primary); }
+.page-subtitle { font-size:13px; color:var(--text-muted); margin-top:2px; }
+
+/* ── CARDS ── */
+.card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-bottom:24px; }
+.kpi-card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border);
+  box-shadow:0 1px 3px rgba(0,0,0,.06); }
+.kpi-label { font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.kpi-value { font-size:32px; font-weight:800; color:var(--primary); margin:6px 0; line-height:1; }
+.kpi-sub { font-size:12px; color:var(--text-muted); }
+.kpi-card.green .kpi-value { color:var(--success); }
+.kpi-card.orange .kpi-value { color:var(--accent); }
+.kpi-card.red .kpi-value { color:var(--danger); }
+.kpi-card.blue .kpi-value { color:var(--info); }
+
+/* ── CHARTS ── */
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); }
+.chart-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:14px; }
+
+/* ── OCUPAÇÃO BARRAS ── */
+.ocupacao-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-bottom:24px; }
+.ocup-card { background:var(--card); border-radius:10px; padding:16px; border:1px solid var(--border); }
+.ocup-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.ocup-nome { font-size:13px; font-weight:700; color:var(--text); }
+.ocup-pct { font-size:18px; font-weight:800; }
+.ocup-bar-bg { height:10px; background:#e8ecf0; border-radius:99px; overflow:hidden; }
+.ocup-bar { height:100%; border-radius:99px; transition:width .6s ease; }
+.ocup-detail { font-size:11px; color:var(--text-muted); margin-top:6px; }
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px;
+  border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-light); }
+.btn-success { background:var(--success); color:#fff; }
+.btn-success:hover { opacity:.9; }
+.btn-accent { background:var(--accent); color:#fff; }
+.btn-accent:hover { background:var(--accent-light); }
+.btn-danger { background:var(--danger); color:#fff; }
+.btn-danger:hover { opacity:.9; }
+.btn-secondary { background:#eef0f2; color:var(--text); }
+.btn-secondary:hover { background:#e0e3e8; }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn-icon { padding:7px 10px; }
+
+/* ── TABELAS ── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+th { text-align:left; padding:10px 14px; font-size:11px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted);
+  border-bottom:2px solid var(--border); background:#f8f9fa; }
+td { padding:11px 14px; font-size:13.5px; border-bottom:1px solid var(--border); vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:#fafbfc; }
+
+/* ── BADGES ── */
+.badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; }
+.badge-green { background:#d4f5e2; color:#1a7a3f; }
+.badge-orange { background:#fde8c7; color:#9a5a00; }
+.badge-red { background:#fdd9d7; color:#8b1a1a; }
+.badge-blue { background:#d6eaf8; color:#1a4f7a; }
+.badge-gray { background:#e8ecf0; color:#5a6472; }
+
+/* ── FILTROS ── */
+.filter-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+.filter-bar input, .filter-bar select { padding:8px 12px; border:1.5px solid var(--border);
+  border-radius:8px; font-size:13px; outline:none; background:#fff; min-width:150px; }
+.filter-bar input:focus, .filter-bar select:focus { border-color:var(--primary-light); }
+
+/* ── MODAL ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+  z-index:500; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px; padding:28px; width:560px; max-width:95vw;
+  max-height:90vh; overflow-y:auto; box-shadow:0 25px 80px rgba(0,0,0,.3); }
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; }
+.modal-title { font-size:18px; font-weight:700; color:var(--primary); }
+.modal-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--text-muted);
+  line-height:1; padding:4px; border-radius:4px; }
+.modal-close:hover { background:#f0f2f5; }
+.modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; padding-top:18px; border-top:1px solid var(--border); }
+
+/* ── FORM ── */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-group.full { grid-column:1/-1; }
+label { font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
+input, select, textarea { padding:10px 12px; border:1.5px solid var(--border);
+  border-radius:8px; font-size:13.5px; outline:none; background:#fff; font-family:inherit; }
+input:focus, select:focus, textarea:focus { border-color:var(--primary-light); }
+textarea { resize:vertical; min-height:70px; }
+
+/* ── CALENDÁRIO ── */
+#cal-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+#cal-mes-label { font-size:16px; font-weight:700; color:var(--primary); min-width:120px; text-align:center; }
+.cal-grid { display:grid; gap:1px; background:var(--border); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.cal-col-header { background:#f8f9fa; padding:8px 4px; font-size:11px; font-weight:700;
+  color:var(--text-muted); text-align:center; text-transform:uppercase; }
+.cal-day { background:#fff; min-height:90px; padding:6px; vertical-align:top; }
+.cal-day.empty { background:#fafafa; }
+.cal-day.today { background:#eef7ff; }
+.cal-day.domingo { background:#fff8f8; }
+.cal-day-num { font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:4px; }
+.cal-event { font-size:10px; padding:2px 5px; border-radius:4px; margin-bottom:2px;
+  cursor:pointer; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-event.l1 { background:#d6eaf8; color:#1a4f7a; }
+.cal-event.l2 { background:#d5f5e3; color:#1a5e3a; }
+.cal-event.l3 { background:#fdebd0; color:#7e5109; }
+.cal-event.l4 { background:#f9ebea; color:#7b241c; }
+.cal-event.real { background:#eaeded; color:#555; font-style:italic; }
+
+/* ── SUGESTÃO ── */
+.sugestao-item { border:1px solid var(--border); border-radius:8px; padding:12px 14px;
+  margin-bottom:8px; display:flex; align-items:center; gap:12px; }
+.sugestao-check { width:18px; height:18px; cursor:pointer; }
+.sugestao-info { flex:1; }
+.sugestao-titulo { font-size:13px; font-weight:600; color:var(--text); }
+.sugestao-detalhe { font-size:12px; color:var(--text-muted); margin-top:2px; }
+.ocup-mini { font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; }
+
+/* ── INSUMOS ── */
+.insumo-list { display:flex; flex-direction:column; gap:8px; }
+.insumo-item { display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; background:#f8f9fa; border-radius:8px; }
+.insumo-nome { font-size:13px; font-weight:600; }
+.insumo-qtd { font-size:13px; font-weight:700; color:var(--primary); }
+
+/* ── TOAST ── */
+#toast { position:fixed; bottom:28px; right:28px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+.toast-msg { padding:12px 18px; border-radius:10px; font-size:13px; font-weight:600;
+  color:#fff; box-shadow:0 6px 24px rgba(0,0,0,.2); animation:slideIn .25s ease; }
+.toast-msg.success { background:var(--success); }
+.toast-msg.error { background:var(--danger); }
+.toast-msg.info { background:var(--primary-light); }
+@keyframes slideIn { from{transform:translateX(60px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+.sep { height:1px; background:var(--border); margin:16px 0; }
+.text-muted { color:var(--text-muted); font-size:12px; }
+.flex-gap { display:flex; gap:8px; align-items:center; }
+.empty-state { text-align:center; padding:60px 20px; color:var(--text-muted); }
+.empty-state .empty-icon { font-size:48px; margin-bottom:12px; }
+.empty-state p { font-size:14px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>⚙️ PCP</h1>
+      <p>Qualimpel Indústria Química</p>
+    </div>
+    <input type="email" id="login-email" placeholder="E-mail" value="admin@pcp.com">
+    <input type="password" id="login-pass" placeholder="Senha" value="admin123">
+    <button onclick="login()">Entrar</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <h2>⚙️ PCP</h2>
+      <p>Planejamento da Produção</p>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Visão Geral</div>
+      <div class="nav-item active" onclick="goTo('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Planejamento</div>
+      <div class="nav-item" onclick="goTo('demanda')"><span class="nav-icon">📋</span>Demanda</div>
+      <div class="nav-item" onclick="goTo('programacao')"><span class="nav-icon">📅</span>Programação</div>
+      <div class="nav-item" onclick="goTo('producao')"><span class="nav-icon">🏭</span>Produção Real</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Cadastros</div>
+      <div class="nav-item" onclick="goTo('skus')"><span class="nav-icon">📦</span>Produtos (SKUs)</div>
+      <div class="nav-item" onclick="goTo('insumos')"><span class="nav-icon">🧪</span>Insumos / MP</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Sistema</div>
+      <div class="nav-item" onclick="goTo('usuarios')"><span class="nav-icon">👥</span>Usuários</div>
+      <div class="nav-item" onclick="goTo('conta')"><span class="nav-icon">⚙️</span>Minha Conta</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">A</div>
+        <div>
+          <div class="user-name" id="sidebar-nome">—</div>
+          <div class="user-role" id="sidebar-role">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sair do sistema</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Visão geral da produção</div>
+        </div>
+        <div class="flex-gap">
+          <input type="month" id="dash-mes" onchange="loadDashboard()">
+          <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">🔄 Atualizar</button>
+        </div>
+      </div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="ocupacao-grid" id="ocup-linhas"></div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">📈 Produção Diária — Programado vs. Realizado</div><canvas id="chart-diario" height="180"></canvas></div>
+        <div class="chart-card"><div class="chart-title">📦 Top SKUs por Demanda</div><canvas id="chart-skus" height="180"></canvas></div>
+      </div>
+    </div>
+
+    <!-- DEMANDA -->
+    <div class="page" id="page-demanda">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Demanda</div>
+          <div class="page-subtitle">Pedidos e demanda do mês</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModalDemanda()">＋ Nova Demanda</button>
+      </div>
+      <div class="filter-bar">
+        <input type="month" id="dem-mes" onchange="loadDemanda()">
+        <select id="dem-status" onchange="loadDemanda()">
+          <option value="">Todos os status</option>
+          <option value="pendente">Pendente</option>
+          <option value="andamento">Em andamento</option>
+          <option value="concluido">Concluído</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadDemanda()">🔍 Filtrar</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>SKU</th><th>Cliente</th><th>Prazo</th>
+              <th>Demanda (fd)</th><th>Produzido (fd)</th><th>Pendente</th>
+              <th>Status</th><th>Ações</th>
+            </tr></thead>
+            <tbody id="dem-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRAMAÇÃO -->
+    <div class="page" id="page-programacao">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Programação</div>
+          <div class="page-subtitle">Calendário de produção por linha</div>
+        </div>
+        <div class="flex-gap">
+          <button class="btn btn-accent" onclick="openSugestaoModal()">🤖 Sugerir Programação</button>
+          <button class="btn btn-primary" onclick="openModalProg()">＋ Lançar Manual</button>
+        </div>
+      </div>
+      <div id="cal-header">
+        <button class="btn btn-secondary btn-sm" onclick="calMes(-1)">◀</button>
+        <span id="cal-mes-label"></span>
+        <button class="btn btn-secondary btn-sm" onclick="calMes(1)">▶</button>
+        <select id="cal-linha-filter" onchange="loadCal()">
+          <option value="">Todas as linhas</option>
+        </select>
+        <div class="flex-gap" style="margin-left:auto;gap:14px;font-size:12px;">
+          <span><span style="background:#d6eaf8;padding:2px 8px;border-radius:4px;">■</span> L1</span>
+          <span><span style="background:#d5f5e3;padding:2px 8px;border-radius:4px;">■</span> L2</span>
+          <span><span style="background:#fdebd0;padding:2px 8px;border-radius:4px;">■</span> L3</span>
+          <span><span style="background:#f9ebea;padding:2px 8px;border-radius:4px;">■</span> L4</span>
+        </div>
+      </div>
+      <div id="calendario"></div>
+    </div>
+
+    <!-- PRODUÇÃO REAL -->
+    <div class="page" id="page-producao">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Produção Real</div>
+          <div class="page-subtitle">Lançamento diário do realizado</div>
+        </div>
+        <button class="btn btn-primary" onclick="openModalReal()">＋ Lançar Produção</button>
+      </div>
+      <div class="filter-bar">
+        <input type="month" id="real-mes" onchange="loadReal()">
+        <select id="real-linha" onchange="loadReal()"><option value="">Todas as linhas</option></select>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Linha</th><th>SKU</th><th>Fardos</th><th>Paletes</th><th>Kg</th><th>Obs</th><th>Ações</th></tr></thead>
+            <tbody id="real-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKUs -->
+    <div class="page" id="page-skus">
+      <div class="page-header">
+        <div><div class="page-title">Produtos (SKUs)</div><div class="page-subtitle">Cadastro e velocidade por linha</div></div>
+        <button class="btn btn-primary" onclick="openModalSku()">＋ Novo SKU</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="sku-busca" placeholder="Buscar SKU..." oninput="filterSkus()">
+        <select id="sku-marca" onchange="filterSkus()"><option value="">Todas as marcas</option></select>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Código</th><th>Descrição</th><th>Marca</th><th>Gramatura</th><th>Pkg/Fardo</th><th>Fardos/Palete</th><th>Linhas</th><th>Ações</th></tr></thead>
+            <tbody id="sku-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSUMOS -->
+    <div class="page" id="page-insumos">
+      <div class="page-header">
+        <div><div class="page-title">Insumos / Matéria-Prima</div><div class="page-subtitle">Cadastro e consumo mensal projetado</div></div>
+        <button class="btn btn-primary" onclick="openModalInsumo()">＋ Novo Insumo</button>
+      </div>
+      <div class="filter-bar">
+        <input type="month" id="ins-mes" onchange="loadInsumosMes()">
+        <button class="btn btn-accent btn-sm" onclick="loadInsumosMes()">📊 Ver Consumo do Mês</button>
+      </div>
+      <div class="charts-grid" style="grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="chart-title" style="margin-bottom:14px;">📋 Insumos Cadastrados</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Código</th><th>Nome</th><th>Unidade</th><th>Ações</th></tr></thead>
+              <tbody id="ins-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="chart-title" style="margin-bottom:14px;">🧮 Consumo Projetado — <span id="ins-mes-label">—</span></div>
+          <div id="ins-consumo-list"><div class="empty-state"><div class="empty-icon">📊</div><p>Selecione um mês para ver o consumo projetado</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USUÁRIOS -->
+    <div class="page" id="page-usuarios">
+      <div class="page-header">
+        <div><div class="page-title">Usuários</div><div class="page-subtitle">Gestão de acesso ao sistema</div></div>
+        <button class="btn btn-primary" onclick="openModalUser()">＋ Novo Usuário</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Cargo</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+            <tbody id="user-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTA -->
+    <div class="page" id="page-conta">
+      <div class="page-header"><div class="page-title">Minha Conta</div></div>
+      <div class="card" style="max-width:420px;">
+        <h3 style="margin-bottom:18px;color:var(--primary);">Alterar Senha</h3>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Senha Atual</label><input type="password" id="pwd-atual">
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Nova Senha</label><input type="password" id="pwd-nova">
+        </div>
+        <div class="form-group" style="margin-bottom:20px;">
+          <label>Confirmar Nova Senha</label><input type="password" id="pwd-conf">
+        </div>
+        <button class="btn btn-primary" onclick="changePassword()">💾 Salvar Senha</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
+<!-- Demanda -->
+<div class="modal-overlay" id="modal-demanda">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-dem-title">Nova Demanda</span>
+      <button class="modal-close" onclick="closeModal('modal-demanda')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>SKU / Produto *</label>
+        <select id="dem-sku-id"><option value="">Selecione...</option></select></div>
+      <div class="form-group"><label>Mês de Referência *</label><input type="month" id="dem-mes-ref"></div>
+      <div class="form-group"><label>Prazo de Entrega</label><input type="date" id="dem-prazo"></div>
+      <div class="form-group"><label>Cliente</label><input type="text" id="dem-cliente" placeholder="Nome do cliente"></div>
+      <div class="form-group"><label>Quantidade (Fardos) *</label><input type="number" id="dem-qtd" min="1"></div>
+      <div class="form-group full"><label>Observações</label><textarea id="dem-obs"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-demanda')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveDemanda()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Programação manual -->
+<div class="modal-overlay" id="modal-prog">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Lançar Programação</span>
+      <button class="modal-close" onclick="closeModal('modal-prog')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Demanda *</label>
+        <select id="prog-demanda-id" onchange="filterLinhasProg()"><option value="">Selecione a demanda...</option></select></div>
+      <div class="form-group"><label>Linha *</label>
+        <select id="prog-linha-id"><option value="">Selecione...</option></select></div>
+      <div class="form-group"><label>Data *</label><input type="date" id="prog-data"></div>
+      <div class="form-group"><label>Fardos Programados *</label><input type="number" id="prog-fardos" min="1"></div>
+      <div class="form-group full"><label>Observações</label><textarea id="prog-obs"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-prog')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProg()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sugestão automática -->
+<div class="modal-overlay" id="modal-sugestao">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <span class="modal-title">🤖 Sugestão de Programação</span>
+      <button class="modal-close" onclick="closeModal('modal-sugestao')">✕</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:18px;">
+      <div class="form-group"><label>Demanda *</label>
+        <select id="sug-demanda-id"><option value="">Selecione...</option></select></div>
+      <div class="form-group"><label>Linha (opcional)</label>
+        <select id="sug-linha-id"><option value="">Melhor disponível</option></select></div>
+    </div>
+    <button class="btn btn-accent" onclick="calcSugestao()">🔍 Calcular Sugestão</button>
+    <div class="sep"></div>
+    <div id="sug-resultado"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sugestao')">Cancelar</button>
+      <button class="btn btn-success" id="btn-confirmar-sug" style="display:none" onclick="confirmarSugestao()">✅ Confirmar Selecionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- Produção Real -->
+<div class="modal-overlay" id="modal-real">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Lançar Produção Real</span>
+      <button class="modal-close" onclick="closeModal('modal-real')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Linha *</label>
+        <select id="real-linha-id"><option value="">Selecione...</option></select></div>
+      <div class="form-group"><label>SKU *</label>
+        <select id="real-sku-id"><option value="">Selecione...</option></select></div>
+      <div class="form-group"><label>Data *</label><input type="date" id="real-data"></div>
+      <div class="form-group"><label>Fardos Produzidos *</label><input type="number" id="real-fardos" min="1"></div>
+      <div class="form-group full"><label>Observações</label><textarea id="real-obs"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-real')">Cancelar</button>
+      <button class="btn btn-success" onclick="saveReal()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKU -->
+<div class="modal-overlay" id="modal-sku">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-sku-title">Novo SKU</span>
+      <button class="modal-close" onclick="closeModal('modal-sku')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Código *</label><input type="text" id="sku-cod" placeholder="Ex: QLIMP-1.6"></div>
+      <div class="form-group"><label>Marca</label><input type="text" id="sku-marca-inp" placeholder="QUALIMPEL"></div>
+      <div class="form-group full"><label>Descrição *</label><input type="text" id="sku-desc" placeholder="QUALIMPEL 1,6KG"></div>
+      <div class="form-group"><label>Gramatura (kg) *</label><input type="number" step="0.1" id="sku-gram"></div>
+      <div class="form-group"><label>Pacotes por Fardo *</label><input type="number" id="sku-pf"></div>
+      <div class="form-group"><label>Fardos por Palete *</label><input type="number" id="sku-fp"></div>
+      <div class="form-group"><label>Kg por Fardo *</label><input type="number" step="0.1" id="sku-kgf"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sku')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSku()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Insumo -->
+<div class="modal-overlay" id="modal-insumo">
+  <div class="modal" style="width:440px;">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-ins-title">Novo Insumo</span>
+      <button class="modal-close" onclick="closeModal('modal-insumo')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Código</label><input type="text" id="ins-cod" placeholder="Ex: BASE-SABAO"></div>
+      <div class="form-group"><label>Unidade *</label>
+        <select id="ins-un"><option value="kg">kg</option><option value="l">L</option><option value="un">un</option></select></div>
+      <div class="form-group full"><label>Nome *</label><input type="text" id="ins-nome" placeholder="Nome do insumo"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-insumo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInsumo()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Usuário -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-user-title">Novo Usuário</span>
+      <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome *</label><input type="text" id="user-nome"></div>
+      <div class="form-group full"><label>E-mail *</label><input type="email" id="user-email"></div>
+      <div class="form-group" id="user-senha-group"><label>Senha *</label><input type="password" id="user-senha"></div>
+      <div class="form-group"><label>Perfil *</label>
+        <select id="user-role"><option value="tecnico">Técnico</option><option value="gestor">Gestor</option><option value="admin">Administrador</option></select></div>
+      <div class="form-group"><label>Cargo</label><input type="text" id="user-cargo"></div>
+      <div class="form-group"><label>Matrícula</label><input type="text" id="user-mat"></div>
+      <div class="form-group"><label>Telefone</label><input type="text" id="user-tel"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-user')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUser()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+const API = '';
+let TOKEN = localStorage.getItem('pcp_token');
+let ME = JSON.parse(localStorage.getItem('pcp_me') || 'null');
+let allSkus = [], allLinhas = [], allDemandas = [], currentSugestao = [];
+let calAno = new Date().getFullYear(), calMesNum = new Date().getMonth() + 1;
+
+// ── UTILS ──────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const t = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = `toast-msg ${type}`;
+  el.textContent = msg;
+  t.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (TOKEN) opts.headers['Authorization'] = `Bearer ${TOKEN}`;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (r.status === 401) { logout(); return null; }
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail || 'Erro na requisição');
+  return data;
+}
+
+function fmt(n, dec=0) { return (n||0).toLocaleString('pt-BR', {minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function fmtDate(d) { if(!d)return'—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+function fmtMes(ym) { if(!ym)return''; const [y,m]=ym.split('-'); const ms=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; return `${ms[+m-1]}/${y}`; }
+function statusBadge(s) {
+  const m = {pendente:'badge-orange',andamento:'badge-blue',concluido:'badge-green',programado:'badge-blue',realizado:'badge-green',cancelado:'badge-gray'};
+  const l = {pendente:'Pendente',andamento:'Em andamento',concluido:'Concluído',programado:'Programado',realizado:'Realizado',cancelado:'Cancelado'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${l[s]||s}</span>`;
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => { if(n.textContent.trim().toLowerCase().includes(page.substring(0,4))) n.classList.add('active'); });
+  if (page==='dashboard') loadDashboard();
+  if (page==='demanda') loadDemanda();
+  if (page==='programacao') loadCal();
+  if (page==='producao') loadReal();
+  if (page==='skus') loadSkus();
+  if (page==='insumos') loadInsumos();
+  if (page==='usuarios') loadUsers();
+}
+
+// ── AUTH ───────────────────────────────────────────────────────────────────────
+async function login() {
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-pass').value;
+  try {
+    const fd = new FormData();
+    fd.append('username', email); fd.append('password', pass);
+    const r = await fetch(API+'/api/auth/token', {method:'POST', body:fd});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail||'Erro');
+    TOKEN = data.access_token;
+    ME = data.user;
+    localStorage.setItem('pcp_token', TOKEN);
+    localStorage.setItem('pcp_me', JSON.stringify(ME));
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('sidebar-nome').textContent = ME.nome;
+    document.getElementById('sidebar-role').textContent = ME.role;
+    document.getElementById('sidebar-avatar').textContent = ME.nome[0].toUpperCase();
+    const mes = new Date().toISOString().slice(0,7);
+    document.getElementById('dash-mes').value = mes;
+    document.getElementById('dem-mes').value = mes;
+    document.getElementById('real-mes').value = mes;
+    document.getElementById('ins-mes').value = mes;
+    await loadBaseData();
+    loadDashboard();
+  } catch(e) { document.getElementById('login-error').textContent = e.message; }
+}
+
+function logout() {
+  TOKEN = null; ME = null;
+  localStorage.removeItem('pcp_token'); localStorage.removeItem('pcp_me');
+  location.reload();
+}
+
+async function changePassword() {
+  const atual = document.getElementById('pwd-atual').value;
+  const nova = document.getElementById('pwd-nova').value;
+  const conf = document.getElementById('pwd-conf').value;
+  if (nova !== conf) { toast('As senhas não coincidem', 'error'); return; }
+  try {
+    await api('POST', '/api/auth/change-password', {senha_atual:atual, nova_senha:nova});
+    toast('Senha alterada com sucesso!', 'success');
+    ['pwd-atual','pwd-nova','pwd-conf'].forEach(id => document.getElementById(id).value='');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── BASE DATA ──────────────────────────────────────────────────────────────────
+async function loadBaseData() {
+  [allSkus, allLinhas, allDemandas] = await Promise.all([
+    api('GET','/api/skus/'),
+    api('GET','/api/skus/'), // placeholder
+    api('GET','/api/demanda/')
+  ]);
+  allLinhas = await api('GET','/api/programacao/ocupacao/'+new Date().toISOString().slice(0,7)).then(()=>null).catch(()=>null);
+  // Reload linhas properly via programação endpoint — store separately
+  try { allLinhas = await fetch(API+'/api/programacao/ocupacao/'+new Date().toISOString().slice(0,7),{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>r.json()); } catch(e){}
+  allDemandas = await api('GET','/api/demanda/') || [];
+
+  // Populate marca filter
+  const marcas = [...new Set(allSkus.map(s=>s.marca).filter(Boolean))].sort();
+  const mk = document.getElementById('sku-marca');
+  mk.innerHTML = '<option value="">Todas as marcas</option>' + marcas.map(m=>`<option value="${m}">${m}</option>`).join('');
+
+  // Populate select de SKUs nos modais
+  const skuOpts = allSkus.map(s=>`<option value="${s.id}">${s.descricao} (${s.codigo})</option>`).join('');
+  ['dem-sku-id','real-sku-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '<option value="">Selecione...</option>' + skuOpts;
+  });
+
+  // Populate linhas nos selects
+  const linhaOpts = (allLinhas||[]).map(l=>`<option value="${l.linha_id}">${l.linha_nome}</option>`).join('');
+  ['real-linha-id','prog-linha-id','sug-linha-id','cal-linha-filter'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const prefix = id==='sug-linha-id'?'<option value="">Melhor disponível</option>':
+                   id==='cal-linha-filter'?'<option value="">Todas as linhas</option>':
+                   '<option value="">Selecione...</option>';
+    if(el) el.innerHTML = prefix + linhaOpts;
+  });
+  // real-linha filter
+  const rlf = document.getElementById('real-linha');
+  if(rlf) rlf.innerHTML = '<option value="">Todas as linhas</option>' + linhaOpts;
+
+  // Populate demanda selects
+  const demOpts = allDemandas.map(d=>`<option value="${d.id}">[${fmtMes(d.mes_ref)}] ${d.sku?.descricao||'SKU '+d.sku_id} — ${d.qtd_fardos-d.qtd_produzida} fd pendentes</option>`).join('');
+  ['prog-demanda-id','sug-demanda-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = '<option value="">Selecione a demanda...</option>' + demOpts;
+  });
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────────────────────
+let chartDiario = null, chartSkus = null;
+
+async function loadDashboard() {
+  const mes = document.getElementById('dash-mes').value || new Date().toISOString().slice(0,7);
+  try {
+    const d = await api('GET', `/api/dashboard/stats?mes_ref=${mes}`);
+    if (!d) return;
+    const k = d.kpis;
+    document.getElementById('kpi-grid').innerHTML = `
+      <div class="kpi-card"><div class="kpi-label">Demanda Total</div><div class="kpi-value">${fmt(k.total_demandado_fardos)}</div><div class="kpi-sub">fardos no mês</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Produzido</div><div class="kpi-value">${fmt(k.total_produzido_fardos)}</div><div class="kpi-sub">${k.pct_atendimento}% da demanda</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Pendente</div><div class="kpi-value">${fmt(k.total_pendente_fardos)}</div><div class="kpi-sub">fardos em aberto</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Pedidos</div><div class="kpi-value">${k.qtd_pedidos}</div><div class="kpi-sub">${k.pedidos_concluidos} concluídos</div></div>
+      <div class="kpi-card"><div class="kpi-label">Em Andamento</div><div class="kpi-value">${k.pedidos_andamento}</div><div class="kpi-sub">pedidos</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Pendentes</div><div class="kpi-value">${k.pedidos_pendentes}</div><div class="kpi-sub">pedidos</div></div>
+    `;
+
+    // Ocupação linhas
+    document.getElementById('ocup-linhas').innerHTML = d.ocupacao_linhas.map(l => {
+      const pct = l.ocupacao_pct;
+      const cor = pct >= 90 ? '#e74c3c' : pct >= 70 ? '#e67e22' : '#27ae60';
+      return `<div class="ocup-card">
+        <div class="ocup-header"><span class="ocup-nome">${l.linha}</span><span class="ocup-pct" style="color:${cor}">${pct}%</span></div>
+        <div class="ocup-bar-bg"><div class="ocup-bar" style="width:${Math.min(pct,100)}%;background:${cor}"></div></div>
+        <div class="ocup-detail">${fmt(l.horas_usadas,1)}h usadas / ${fmt(l.horas_disponiveis,1)}h disponíveis — ${fmt(l.fardos_programados)} fardos</div>
+      </div>`;
+    }).join('');
+
+    // Chart diário
+    const labels = d.producao_diaria.map(p => p.data.slice(5));
+    const prog = d.producao_diaria.map(p => p.programado);
+    const real = d.producao_diaria.map(p => p.realizado);
+    if (chartDiario) chartDiario.destroy();
+    chartDiario = new Chart(document.getElementById('chart-diario'), {
+      type:'bar',
+      data:{ labels, datasets:[
+        {label:'Programado',data:prog,backgroundColor:'rgba(41,128,185,.3)',borderColor:'#2980b9',borderWidth:1.5},
+        {label:'Realizado',data:real,backgroundColor:'rgba(39,174,96,.5)',borderColor:'#27ae60',borderWidth:1.5}
+      ]},
+      options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true}}}
+    });
+
+    // Chart SKUs
+    const topSkus = d.top_skus.slice(0,8);
+    if (chartSkus) chartSkus.destroy();
+    chartSkus = new Chart(document.getElementById('chart-skus'), {
+      type:'bar',
+      data:{ labels:topSkus.map(s=>s.sku.substring(0,18)),
+             datasets:[{label:'Demandado',data:topSkus.map(s=>s.demandado),backgroundColor:'rgba(41,128,185,.4)',borderColor:'#2980b9',borderWidth:1.5},
+                       {label:'Produzido',data:topSkus.map(s=>s.produzido),backgroundColor:'rgba(39,174,96,.5)',borderColor:'#27ae60',borderWidth:1.5}]},
+      options:{indexAxis:'y',responsive:true,plugins:{legend:{position:'top'}},scales:{x:{beginAtZero:true}}}
+    });
+  } catch(e) { toast('Erro ao carregar dashboard: '+e.message,'error'); }
+}
+
+// ── DEMANDA ────────────────────────────────────────────────────────────────────
+async function loadDemanda() {
+  const mes = document.getElementById('dem-mes').value;
+  const status = document.getElementById('dem-status').value;
+  let url = '/api/demanda/?';
+  if (mes) url += `mes_ref=${mes}&`;
+  if (status) url += `status=${status}`;
+  try {
+    const data = await api('GET', url);
+    allDemandas = data || [];
+    document.getElementById('dem-tbody').innerHTML = allDemandas.length === 0
+      ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">Nenhuma demanda encontrada</td></tr>`
+      : allDemandas.map(d => {
+          const pend = d.qtd_fardos - d.qtd_produzida;
+          return `<tr>
+            <td><strong>${d.sku?.descricao||'—'}</strong><br><small class="text-muted">${d.sku?.codigo||''}</small></td>
+            <td>${d.cliente||'—'}</td>
+            <td>${fmtDate(d.prazo_entrega)}</td>
+            <td>${fmt(d.qtd_fardos)}</td>
+            <td>${fmt(d.qtd_produzida)}</td>
+            <td><strong style="color:${pend>0?'var(--danger)':'var(--success)'}">${fmt(pend)}</strong></td>
+            <td>${statusBadge(d.status)}</td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="verInsumos(${d.id})">🧪</button>
+              <button class="btn btn-sm btn-secondary" onclick="editDemanda(${d.id})">✏️</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteDemanda(${d.id})">🗑</button>
+            </td>
+          </tr>`;
+        }).join('');
+    // Update demanda selects
+    const demOpts = allDemandas.filter(d=>d.qtd_fardos-d.qtd_produzida>0).map(d=>`<option value="${d.id}">[${fmtMes(d.mes_ref)}] ${d.sku?.descricao||'SKU '+d.sku_id} — ${d.qtd_fardos-d.qtd_produzida} fd pendentes</option>`).join('');
+    ['prog-demanda-id','sug-demanda-id'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<option value="">Selecione a demanda...</option>' + demOpts;
+    });
+  } catch(e) { toast('Erro: '+e.message,'error'); }
+}
+
+let editDemId = null;
+function openModalDemanda(id) {
+  editDemId = null;
+  document.getElementById('modal-dem-title').textContent = 'Nova Demanda';
+  ['dem-sku-id','dem-cliente','dem-prazo','dem-qtd','dem-obs'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('dem-mes-ref').value = document.getElementById('dem-mes').value || new Date().toISOString().slice(0,7);
+  openModal('modal-demanda');
+}
+
+async function editDemanda(id) {
+  editDemId = id;
+  const d = allDemandas.find(x=>x.id===id);
+  if (!d) return;
+  document.getElementById('modal-dem-title').textContent = 'Editar Demanda';
+  document.getElementById('dem-sku-id').value = d.sku_id;
+  document.getElementById('dem-mes-ref').value = d.mes_ref;
+  document.getElementById('dem-prazo').value = d.prazo_entrega||'';
+  document.getElementById('dem-cliente').value = d.cliente||'';
+  document.getElementById('dem-qtd').value = d.qtd_fardos;
+  document.getElementById('dem-obs').value = d.obs||'';
+  openModal('modal-demanda');
+}
+
+async function saveDemanda() {
+  const body = {
+    sku_id: +document.getElementById('dem-sku-id').value,
+    mes_ref: document.getElementById('dem-mes-ref').value,
+    prazo_entrega: document.getElementById('dem-prazo').value||null,
+    cliente: document.getElementById('dem-cliente').value||null,
+    qtd_fardos: +document.getElementById('dem-qtd').value,
+    obs: document.getElementById('dem-obs').value||null
+  };
+  if (!body.sku_id||!body.mes_ref||!body.qtd_fardos) { toast('Preencha os campos obrigatórios','error'); return; }
+  try {
+    if (editDemId) await api('PUT',`/api/demanda/${editDemId}`,body);
+    else await api('POST','/api/demanda/',body);
+    closeModal('modal-demanda');
+    toast(editDemId?'Demanda atualizada!':'Demanda criada!','success');
+    loadDemanda();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function deleteDemanda(id) {
+  if (!confirm('Excluir esta demanda? Programações vinculadas também serão removidas.')) return;
+  try { await api('DELETE',`/api/demanda/${id}`); toast('Demanda excluída','success'); loadDemanda(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function verInsumos(demId) {
+  try {
+    const data = await api('GET',`/api/demanda/${demId}/insumos`);
+    if (!data) return;
+    if (data.insumos.length === 0) { toast('Nenhuma formulação cadastrada para este SKU','info'); return; }
+    const linhas = data.insumos.map(i=>`<tr><td>${i.insumo}</td><td>${fmt(i.total_necessario,2)} ${i.unidade}</td></tr>`).join('');
+    alert(`Insumos para ${data.sku} (${fmt(data.qtd_fardos)} fardos / ${fmt(data.total_kg_produto,1)} kg):\n\n` +
+      data.insumos.map(i=>`• ${i.insumo}: ${fmt(i.total_necessario,2)} ${i.unidade}`).join('\n'));
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── CALENDÁRIO ─────────────────────────────────────────────────────────────────
+async function loadCal() {
+  const mes = `${calAno}-${String(calMesNum).padStart(2,'0')}`;
+  document.getElementById('cal-mes-label').textContent = fmtMes(mes);
+  const linhaFiltro = document.getElementById('cal-linha-filter')?.value;
+
+  try {
+    const [progs, reais] = await Promise.all([
+      api('GET', `/api/programacao/?mes_ref=${mes}`),
+      api('GET', `/api/producao/?mes_ref=${mes}`)
+    ]);
+
+    const diasNoMes = new Date(calAno, calMesNum, 0).getDate();
+    const primeiroDia = new Date(calAno, calMesNum-1, 1).getDay(); // 0=dom
+
+    // Grid: 7 colunas (dom a sab)
+    let html = `<div class="cal-grid" style="grid-template-columns:repeat(7,1fr);">`;
+    const diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    html += diasSemana.map(d=>`<div class="cal-col-header">${d}</div>`).join('');
+
+    // células vazias antes do dia 1
+    for (let i=0; i<primeiroDia; i++) html += `<div class="cal-day empty"></div>`;
+
+    const hoje = new Date(); const hojeStr = hoje.toISOString().slice(0,10);
+
+    for (let dia=1; dia<=diasNoMes; dia++) {
+      const dataStr = `${calAno}-${String(calMesNum).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+      const dow = new Date(calAno, calMesNum-1, dia).getDay();
+      const isHoje = dataStr===hojeStr;
+      const isDom = dow===0;
+      let cls = 'cal-day';
+      if (isDom) cls += ' domingo';
+      if (isHoje) cls += ' today';
+
+      // Programações do dia
+      let evts = (progs||[]).filter(p => p.data_programada===dataStr);
+      let reaisDia = (reais||[]).filter(r => r.data===dataStr);
+      if (linhaFiltro) {
+        evts = evts.filter(p => String(p.linha_id)===linhaFiltro);
+        reaisDia = reaisDia.filter(r => String(r.linha_id)===linhaFiltro);
+      }
+
+      const linhaClass = (id) => ['','l1','l2','l3','l4'][id] || 'l1';
+
+      const evtHtml = evts.map(p => {
+        const lc = linhaClass(p.linha_id);
+        const sku = p.demanda?.sku?.descricao || 'SKU';
+        return `<div class="cal-event ${lc}" title="${sku} — ${fmt(p.fardos_programados)} fd\n${p.linha?.nome||''}"
+          onclick="editProg(${p.id})">${fmt(p.fardos_programados)}fd • ${(sku).substring(0,12)}</div>`;
+      }).join('');
+
+      const realHtml = reaisDia.map(r => {
+        return `<div class="cal-event real" title="Real: ${r.sku?.descricao||''} — ${fmt(r.fardos_produzidos)} fd"
+          >✓ ${fmt(r.fardos_produzidos)}fd</div>`;
+      }).join('');
+
+      html += `<div class="${cls}">
+        <div class="cal-day-num">${dia}</div>
+        ${evtHtml}${realHtml}
+        ${isDom?'':'<div style="font-size:9px;color:#ccc;margin-top:2px;cursor:pointer" onclick="quickAddProg(\'${dataStr}\')">＋</div>'}
+      </div>`;
+    }
+    html += '</div>';
+    document.getElementById('calendario').innerHTML = html;
+  } catch(e) { toast('Erro ao carregar calendário: '+e.message,'error'); }
+}
+
+function calMes(delta) {
+  calMesNum += delta;
+  if (calMesNum > 12) { calMesNum=1; calAno++; }
+  if (calMesNum < 1) { calMesNum=12; calAno--; }
+  loadCal();
+}
+
+function quickAddProg(data) {
+  document.getElementById('prog-data').value = data;
+  openModal('modal-prog');
+}
+
+async function editProg(id) {
+  if (!confirm('Excluir esta programação?')) return;
+  try { await api('DELETE',`/api/programacao/${id}`); toast('Programação removida','success'); loadCal(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+function openModalProg() { openModal('modal-prog'); }
+
+async function filterLinhasProg() {
+  const demId = document.getElementById('prog-demanda-id').value;
+  if (!demId) return;
+  try {
+    const sku_data = await api('GET',`/api/demanda/${demId}`);
+    if (!sku_data) return;
+    const sku = await api('GET',`/api/skus/${sku_data.sku_id}`);
+    if (!sku) return;
+    const linhasCompat = sku.linhas.filter(l=>l.is_active);
+    const linhaOpts = linhasCompat.map(l=>`<option value="${l.linha_id}">${l.linha?.nome||'Linha '+l.linha_id} — ${fmt(l.fardos_hora,1)} fd/h</option>`).join('');
+    document.getElementById('prog-linha-id').innerHTML = '<option value="">Selecione...</option>' + linhaOpts;
+  } catch(e) {}
+}
+
+async function saveProg() {
+  const body = {
+    demanda_id: +document.getElementById('prog-demanda-id').value,
+    linha_id: +document.getElementById('prog-linha-id').value,
+    data_programada: document.getElementById('prog-data').value,
+    fardos_programados: +document.getElementById('prog-fardos').value,
+    obs: document.getElementById('prog-obs').value||null
+  };
+  if (!body.demanda_id||!body.linha_id||!body.data_programada||!body.fardos_programados) { toast('Preencha todos os campos obrigatórios','error'); return; }
+  try {
+    await api('POST','/api/programacao/',body);
+    closeModal('modal-prog');
+    toast('Programação lançada!','success');
+    loadCal();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── SUGESTÃO ───────────────────────────────────────────────────────────────────
+function openSugestaoModal() { document.getElementById('sug-resultado').innerHTML=''; document.getElementById('btn-confirmar-sug').style.display='none'; currentSugestao=[]; openModal('modal-sugestao'); }
+
+async function calcSugestao() {
+  const demId = document.getElementById('sug-demanda-id').value;
+  const linhaId = document.getElementById('sug-linha-id').value;
+  if (!demId) { toast('Selecione uma demanda','error'); return; }
+  try {
+    const body = { demanda_id: +demId };
+    if (linhaId) body.linha_id = +linhaId;
+    const data = await api('POST','/api/programacao/sugerir',body);
+    currentSugestao = data.sugestoes || [];
+    let html = `<div style="margin-bottom:14px;">
+      <strong>${data.sku}</strong> — ${fmt(data.fardos_a_programar)} fardos a programar
+      ${data.fardos_sem_vaga>0?`<br><span style="color:var(--danger);font-size:12px;">⚠️ ${fmt(data.fardos_sem_vaga)} fardos sem vaga no mês</span>`:''}
+    </div>`;
+    if (currentSugestao.length===0) {
+      html += `<div class="empty-state"><div class="empty-icon">😞</div><p>Nenhuma vaga disponível no mês para este SKU</p></div>`;
+    } else {
+      html += currentSugestao.map((s,i) => {
+        const cor = s.ocupacao_dia_pct >= 90 ? 'red' : s.ocupacao_dia_pct >= 70 ? 'orange' : 'green';
+        return `<div class="sugestao-item">
+          <input type="checkbox" class="sugestao-check" id="sug-${i}" checked>
+          <div class="sugestao-info">
+            <div class="sugestao-titulo">${s.linha_nome} — ${fmtDate(s.data_programada)}</div>
+            <div class="sugestao-detalhe">${fmt(s.fardos_programados)} fardos • ${fmt(s.horas_necessarias,2)}h necessárias • ${fmt(s.fardos_hora,1)} fd/h</div>
+          </div>
+          <span class="ocup-mini badge badge-${cor}">${s.ocupacao_dia_pct}%</span>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('sug-resultado').innerHTML = html;
+    document.getElementById('btn-confirmar-sug').style.display = currentSugestao.length > 0 ? 'inline-flex' : 'none';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function confirmarSugestao() {
+  const demId = +document.getElementById('sug-demanda-id').value;
+  const selecionados = currentSugestao.filter((_,i)=>document.getElementById(`sug-${i}`)?.checked);
+  if (selecionados.length===0) { toast('Selecione ao menos um item','error'); return; }
+  const body = selecionados.map(s=>({
+    demanda_id: demId,
+    linha_id: s.linha_id,
+    data_programada: s.data_programada,
+    fardos_programados: s.fardos_programados
+  }));
+  try {
+    await api('POST','/api/programacao/confirmar-sugestao',body);
+    closeModal('modal-sugestao');
+    toast(`${selecionados.length} programações criadas!`,'success');
+    loadCal();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── PRODUÇÃO REAL ──────────────────────────────────────────────────────────────
+async function loadReal() {
+  const mes = document.getElementById('real-mes').value;
+  const linha = document.getElementById('real-linha').value;
+  let url = `/api/producao/?`;
+  if (mes) url += `mes_ref=${mes}&`;
+  if (linha) url += `linha_id=${linha}`;
+  try {
+    const data = await api('GET', url) || [];
+    document.getElementById('real-tbody').innerHTML = data.length===0
+      ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum registro encontrado</td></tr>`
+      : data.map(r=>{
+          const paletes = (r.sku?.fardos_palete||1) > 0 ? (r.fardos_produzidos/(r.sku?.fardos_palete||1)).toFixed(1) : '—';
+          const kg = r.fardos_produzidos * (r.sku?.kg_fardo||0);
+          return `<tr>
+            <td>${fmtDate(r.data)}</td>
+            <td>${r.linha?.nome||'—'}</td>
+            <td>${r.sku?.descricao||'—'}</td>
+            <td>${fmt(r.fardos_produzidos)}</td>
+            <td>${paletes}</td>
+            <td>${fmt(kg,1)} kg</td>
+            <td>${r.obs||'—'}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deleteReal(${r.id})">🗑</button></td>
+          </tr>`;
+        }).join('');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function openModalReal() {
+  document.getElementById('real-data').value = new Date().toISOString().slice(0,10);
+  openModal('modal-real');
+}
+
+async function saveReal() {
+  const body = {
+    linha_id: +document.getElementById('real-linha-id').value,
+    sku_id: +document.getElementById('real-sku-id').value,
+    data: document.getElementById('real-data').value,
+    fardos_produzidos: +document.getElementById('real-fardos').value,
+    obs: document.getElementById('real-obs').value||null
+  };
+  if (!body.linha_id||!body.sku_id||!body.data||!body.fardos_produzidos) { toast('Preencha todos os campos obrigatórios','error'); return; }
+  try {
+    await api('POST','/api/producao/',body);
+    closeModal('modal-real');
+    toast('Produção lançada!','success');
+    loadReal();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function deleteReal(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  try { await api('DELETE',`/api/producao/${id}`); toast('Excluído','success'); loadReal(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── SKUS ───────────────────────────────────────────────────────────────────────
+async function loadSkus() {
+  try {
+    allSkus = await api('GET','/api/skus/') || [];
+    filterSkus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function filterSkus() {
+  const busca = document.getElementById('sku-busca').value.toLowerCase();
+  const marca = document.getElementById('sku-marca').value;
+  const filtered = allSkus.filter(s =>
+    (!busca || s.descricao.toLowerCase().includes(busca) || s.codigo.toLowerCase().includes(busca)) &&
+    (!marca || s.marca===marca) && s.is_active
+  );
+  document.getElementById('sku-tbody').innerHTML = filtered.length===0
+    ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum SKU encontrado</td></tr>`
+    : filtered.map(s=>`<tr>
+        <td><code style="font-size:12px;background:#f0f2f5;padding:2px 6px;border-radius:4px">${s.codigo}</code></td>
+        <td><strong>${s.descricao}</strong></td>
+        <td><span class="badge badge-blue">${s.marca||'—'}</span></td>
+        <td>${s.gramatura} kg</td>
+        <td>${s.pacotes_fardo}</td>
+        <td>${s.fardos_palete}</td>
+        <td>${s.linhas.filter(l=>l.is_active).map(l=>`<span class="badge badge-gray" style="font-size:10px;margin:1px">${l.linha?.nome||'L'+l.linha_id}</span>`).join('')||'—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteSku(${s.id})">🗑</button></td>
+      </tr>`).join('');
+}
+
+let editSkuId = null;
+function openModalSku() { editSkuId=null; document.getElementById('modal-sku-title').textContent='Novo SKU'; ['sku-cod','sku-marca-inp','sku-desc','sku-gram','sku-pf','sku-fp','sku-kgf'].forEach(id=>document.getElementById(id).value=''); openModal('modal-sku'); }
+
+async function saveSku() {
+  const body = {
+    codigo: document.getElementById('sku-cod').value,
+    descricao: document.getElementById('sku-desc').value,
+    gramatura: +document.getElementById('sku-gram').value,
+    pacotes_fardo: +document.getElementById('sku-pf').value,
+    fardos_palete: +document.getElementById('sku-fp').value,
+    kg_fardo: +document.getElementById('sku-kgf').value,
+    marca: document.getElementById('sku-marca-inp').value||null,
+    linhas: []
+  };
+  if (!body.codigo||!body.descricao||!body.gramatura) { toast('Preencha os campos obrigatórios','error'); return; }
+  try {
+    await api('POST','/api/skus/',body);
+    closeModal('modal-sku');
+    toast('SKU criado!','success');
+    loadSkus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function deleteSku(id) {
+  if (!confirm('Desativar este SKU?')) return;
+  try { await api('DELETE',`/api/skus/${id}`); toast('SKU desativado','success'); loadSkus(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── INSUMOS ────────────────────────────────────────────────────────────────────
+async function loadInsumos() {
+  try {
+    const data = await api('GET','/api/insumos/') || [];
+    document.getElementById('ins-tbody').innerHTML = data.length===0
+      ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:30px">Nenhum insumo cadastrado</td></tr>`
+      : data.map(i=>`<tr>
+          <td><code style="font-size:11px;background:#f0f2f5;padding:2px 5px;border-radius:4px">${i.codigo||'—'}</code></td>
+          <td>${i.nome}</td>
+          <td>${i.unidade}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteInsumo(${i.id})">🗑</button></td>
+        </tr>`).join('');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function loadInsumosMes() {
+  const mes = document.getElementById('ins-mes').value;
+  if (!mes) return;
+  document.getElementById('ins-mes-label').textContent = fmtMes(mes);
+  try {
+    const data = await api('GET',`/api/demanda/mes/${mes}/resumo-insumos`) || [];
+    const el = document.getElementById('ins-consumo-list');
+    if (data.length===0) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>Sem demanda pendente no mês ou formulações não cadastradas</p></div>';
+      return;
+    }
+    el.innerHTML = '<div class="insumo-list">' + data.map(i=>`
+      <div class="insumo-item">
+        <div><div class="insumo-nome">${i.insumo}</div><div class="text-muted">${i.unidade}</div></div>
+        <div class="insumo-qtd">${fmt(i.total,2)} ${i.unidade}</div>
+      </div>`).join('') + '</div>';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+let editInsId = null;
+function openModalInsumo() { editInsId=null; document.getElementById('modal-ins-title').textContent='Novo Insumo'; ['ins-cod','ins-nome'].forEach(id=>document.getElementById(id).value=''); document.getElementById('ins-un').value='kg'; openModal('modal-insumo'); }
+
+async function saveInsumo() {
+  const body = { codigo:document.getElementById('ins-cod').value||null, nome:document.getElementById('ins-nome').value, unidade:document.getElementById('ins-un').value };
+  if (!body.nome) { toast('Informe o nome do insumo','error'); return; }
+  try {
+    await api('POST','/api/insumos/',body);
+    closeModal('modal-insumo');
+    toast('Insumo criado!','success');
+    loadInsumos();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function deleteInsumo(id) {
+  if (!confirm('Desativar este insumo?')) return;
+  try { await api('DELETE',`/api/insumos/${id}`); toast('Insumo desativado','success'); loadInsumos(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── USUÁRIOS ───────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const data = await api('GET','/api/users/') || [];
+    const roles = {admin:'Administrador',gestor:'Gestor',tecnico:'Técnico'};
+    document.getElementById('user-tbody').innerHTML = data.map(u=>`<tr>
+      <td><strong>${u.nome}</strong></td>
+      <td>${u.email}</td>
+      <td>${u.cargo||'—'}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-red':u.role==='gestor'?'badge-blue':'badge-gray'}">${roles[u.role]||u.role}</span></td>
+      <td>${u.is_active?'<span class="badge badge-green">Ativo</span>':'<span class="badge badge-gray">Inativo</span>'}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deactivateUser(${u.id})">⛔</button>
+      </td>
+    </tr>`).join('');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+let editUserId = null;
+function openModalUser() { editUserId=null; document.getElementById('modal-user-title').textContent='Novo Usuário'; ['user-nome','user-email','user-senha','user-cargo','user-mat','user-tel'].forEach(id=>document.getElementById(id).value=''); document.getElementById('user-role').value='tecnico'; document.getElementById('user-senha-group').style.display=''; openModal('modal-user'); }
+
+async function saveUser() {
+  const body = { nome:document.getElementById('user-nome').value, email:document.getElementById('user-email').value, senha:document.getElementById('user-senha').value, role:document.getElementById('user-role').value, cargo:document.getElementById('user-cargo').value||null, matricula:document.getElementById('user-mat').value||null, telefone:document.getElementById('user-tel').value||null };
+  if (!body.nome||!body.email||!body.senha) { toast('Preencha nome, e-mail e senha','error'); return; }
+  try { await api('POST','/api/users/',body); closeModal('modal-user'); toast('Usuário criado!','success'); loadUsers(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function deactivateUser(id) {
+  if (!confirm('Desativar este usuário?')) return;
+  try { await api('PUT',`/api/users/${id}`,{is_active:false}); toast('Usuário desativado','success'); loadUsers(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────────
+if (TOKEN && ME) {
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('sidebar-nome').textContent=ME.nome;
+  document.getElementById('sidebar-role').textContent=ME.role;
+  document.getElementById('sidebar-avatar').textContent=ME.nome[0].toUpperCase();
+  const mes=new Date().toISOString().slice(0,7);
+  ['dash-mes','dem-mes','real-mes','ins-mes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mes;});
+  loadBaseData().then(()=>loadDashboard());
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
+</script>
+</body>
+</html>
