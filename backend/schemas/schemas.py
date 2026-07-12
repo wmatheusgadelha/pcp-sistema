@@ -119,6 +119,7 @@ class SkuOut(BaseModel):
     marca: Optional[str]
     is_active: bool
     linhas: List[SkuLinhaOut] = []
+    formulacao: List["FormulacaoOut"] = []
     model_config = {"from_attributes": True}
 
 
