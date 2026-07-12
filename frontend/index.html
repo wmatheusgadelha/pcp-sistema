@@ -755,7 +755,7 @@ async function login() {
     document.getElementById('dem-mes').value = mes;
     document.getElementById('real-mes').value = mes;
     document.getElementById('ins-mes').value = mes;
-    await loadBaseData();
+    try { await loadBaseData(); } catch(e) { console.warn('loadBaseData falhou:', e); }
     loadDashboard();
   } catch(e) { document.getElementById('login-error').textContent = e.message; }
 }
@@ -780,48 +780,60 @@ async function changePassword() {
 
 // ── BASE DATA ──────────────────────────────────────────────────────────────────
 async function loadBaseData() {
-  [allSkus, allLinhas, allDemandas] = await Promise.all([
-    api('GET','/api/skus/'),
-    api('GET','/api/skus/'), // placeholder
-    api('GET','/api/demanda/')
-  ]);
-  allLinhas = await api('GET','/api/programacao/ocupacao/'+new Date().toISOString().slice(0,7)).then(()=>null).catch(()=>null);
-  // Reload linhas properly via programação endpoint — store separately
-  try { allLinhas = await fetch(API+'/api/programacao/ocupacao/'+new Date().toISOString().slice(0,7),{headers:{'Authorization':'Bearer '+TOKEN}}).then(r=>r.json()); } catch(e){}
-  allDemandas = await api('GET','/api/demanda/') || [];
+  try { allSkus = await api('GET', '/api/skus/') || []; } catch(e) { allSkus = []; }
+  try {
+    const mes = new Date().toISOString().slice(0,7);
+    allLinhas = await api('GET', `/api/programacao/ocupacao/${mes}`) || [];
+  } catch(e) { allLinhas = []; }
+  try { allDemandas = await api('GET', '/api/demanda/') || []; } catch(e) { allDemandas = []; }
 
-  // Populate marca filter
-  const marcas = [...new Set(allSkus.map(s=>s.marca).filter(Boolean))].sort();
-  const mk = document.getElementById('sku-marca');
-  mk.innerHTML = '<option value="">Todas as marcas</option>' + marcas.map(m=>`<option value="${m}">${m}</option>`).join('');
+  populateSelects();
+}
 
-  // Populate select de SKUs nos modais
-  const skuOpts = allSkus.map(s=>`<option value="${s.id}">${s.descricao} (${s.codigo})</option>`).join('');
-  ['dem-sku-id','real-sku-id'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.innerHTML = '<option value="">Selecione...</option>' + skuOpts;
-  });
+function populateSelects() {
+  // Marcas
+  try {
+    const marcas = [...new Set(allSkus.map(s=>s.marca).filter(Boolean))].sort();
+    const mk = document.getElementById('sku-marca');
+    if(mk) mk.innerHTML = '<option value="">Todas as marcas</option>' + marcas.map(m=>`<option value="${m}">${m}</option>`).join('');
+  } catch(e) {}
 
-  // Populate linhas nos selects
-  const linhaOpts = (allLinhas||[]).map(l=>`<option value="${l.linha_id}">${l.linha_nome}</option>`).join('');
-  ['real-linha-id','prog-linha-id','sug-linha-id','cal-linha-filter'].forEach(id => {
-    const el = document.getElementById(id);
-    if(!el) return;
-    const prefix = id==='sug-linha-id'?'<option value="">Melhor disponível</option>':
-                   id==='cal-linha-filter'?'<option value="">Todas as linhas</option>':
-                   '<option value="">Selecione...</option>';
-    if(el) el.innerHTML = prefix + linhaOpts;
-  });
-  // real-linha filter
-  const rlf = document.getElementById('real-linha');
-  if(rlf) rlf.innerHTML = '<option value="">Todas as linhas</option>' + linhaOpts;
+  // SKUs nos modais
+  try {
+    const skuOpts = allSkus.map(s=>`<option value="${s.id}">${s.descricao} (${s.codigo})</option>`).join('');
+    ['dem-sku-id','real-sku-id'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<option value="">Selecione...</option>' + skuOpts;
+    });
+  } catch(e) {}
 
-  // Populate demanda selects
-  const demOpts = allDemandas.map(d=>`<option value="${d.id}">[${fmtMes(d.mes_ref)}] ${d.sku?.descricao||'SKU '+d.sku_id} — ${d.qtd_fardos-d.qtd_produzida} fd pendentes</option>`).join('');
-  ['prog-demanda-id','sug-demanda-id'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.innerHTML = '<option value="">Selecione a demanda...</option>' + demOpts;
-  });
+  // Linhas nos selects
+  try {
+    const linhaOpts = allLinhas.map(l=>`<option value="${l.linha_id}">${l.linha_nome}</option>`).join('');
+    const prefixes = {
+      'sug-linha-id': '<option value="">Melhor disponível</option>',
+      'cal-linha-filter': '<option value="">Todas as linhas</option>',
+      'real-linha': '<option value="">Todas as linhas</option>',
+    };
+    ['real-linha-id','prog-linha-id','sug-linha-id','cal-linha-filter','real-linha'].forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      const prefix = prefixes[id] || '<option value="">Selecione...</option>';
+      el.innerHTML = prefix + linhaOpts;
+    });
+  } catch(e) {}
+
+  // Demandas nos selects
+  try {
+    const demOpts = allDemandas
+      .filter(d => d.qtd_fardos - d.qtd_produzida > 0)
+      .map(d=>`<option value="${d.id}">[${fmtMes(d.mes_ref)}] ${d.sku?.descricao||'SKU '+d.sku_id} — ${d.qtd_fardos-d.qtd_produzida} fd pendentes</option>`)
+      .join('');
+    ['prog-demanda-id','sug-demanda-id'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<option value="">Selecione a demanda...</option>' + demOpts;
+    });
+  } catch(e) {}
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────────────────────────
@@ -1551,7 +1563,7 @@ if (TOKEN && ME) {
   document.getElementById('sidebar-avatar').textContent=ME.nome[0].toUpperCase();
   const mes=new Date().toISOString().slice(0,7);
   ['dash-mes','dem-mes','real-mes','ins-mes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mes;});
-  loadBaseData().then(()=>loadDashboard());
+  loadBaseData().catch(e=>console.warn('loadBaseData init falhou:',e)).then(()=>loadDashboard());
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
