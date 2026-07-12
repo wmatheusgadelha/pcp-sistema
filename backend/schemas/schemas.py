@@ -71,6 +71,40 @@ class LinhaOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── INSUMOS (definido antes de SKU para evitar referência circular) ────────────
+class InsumoCreate(BaseModel):
+    codigo: Optional[str] = None
+    nome: str
+    unidade: str = "kg"
+
+class InsumoUpdate(BaseModel):
+    nome: Optional[str] = None
+    unidade: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class InsumoOut(BaseModel):
+    id: int
+    codigo: Optional[str]
+    nome: str
+    unidade: str
+    is_active: bool
+    model_config = {"from_attributes": True}
+
+
+# ── FORMULAÇÃO (definido antes de SKU para evitar referência circular) ─────────
+class FormulacaoCreate(BaseModel):
+    insumo_id: int
+    qtd_por_kg: float
+
+class FormulacaoOut(BaseModel):
+    id: int
+    sku_id: int
+    insumo_id: int
+    qtd_por_kg: float
+    insumo: Optional[InsumoOut] = None
+    model_config = {"from_attributes": True}
+
+
 # ── SKU LINHA ─────────────────────────────────────────────────────────────────
 class SkuLinhaCreate(BaseModel):
     linha_id: int
@@ -119,47 +153,13 @@ class SkuOut(BaseModel):
     marca: Optional[str]
     is_active: bool
     linhas: List[SkuLinhaOut] = []
-    formulacao: List["FormulacaoOut"] = []
-    model_config = {"from_attributes": True}
-
-
-# ── INSUMOS ───────────────────────────────────────────────────────────────────
-class InsumoCreate(BaseModel):
-    codigo: Optional[str] = None
-    nome: str
-    unidade: str = "kg"
-
-class InsumoUpdate(BaseModel):
-    nome: Optional[str] = None
-    unidade: Optional[str] = None
-    is_active: Optional[bool] = None
-
-class InsumoOut(BaseModel):
-    id: int
-    codigo: Optional[str]
-    nome: str
-    unidade: str
-    is_active: bool
-    model_config = {"from_attributes": True}
-
-
-# ── FORMULAÇÃO ────────────────────────────────────────────────────────────────
-class FormulacaoCreate(BaseModel):
-    insumo_id: int
-    qtd_por_kg: float
-
-class FormulacaoOut(BaseModel):
-    id: int
-    sku_id: int
-    insumo_id: int
-    qtd_por_kg: float
-    insumo: Optional[InsumoOut] = None
+    formulacao: List[FormulacaoOut] = []
     model_config = {"from_attributes": True}
 
 
 # ── DEMANDA ───────────────────────────────────────────────────────────────────
 class DemandaCreate(BaseModel):
-    mes_ref: str          # "2026-07"
+    mes_ref: str
     sku_id: int
     cliente: Optional[str] = None
     prazo_entrega: Optional[date] = None
@@ -218,7 +218,7 @@ class ProgramacaoOut(BaseModel):
 
 class SugestaoRequest(BaseModel):
     demanda_id: int
-    linha_id: Optional[int] = None   # se None, sistema escolhe a melhor
+    linha_id: Optional[int] = None
 
 
 # ── PRODUÇÃO REAL ─────────────────────────────────────────────────────────────
