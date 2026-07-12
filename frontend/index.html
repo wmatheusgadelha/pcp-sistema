@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PCP — Qualimpel</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -23,6 +23,7 @@
   --sidebar-w: 220px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; }
 body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
 
 /* ── LOGIN ── */
@@ -43,7 +44,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 #login-error { color:var(--danger); font-size:13px; margin-top:8px; text-align:center; }
 
 /* ── LAYOUT ── */
-#app { display:none; min-height:100vh; }
+#app { display:none; min-height:100vh; width:100%; }
 #sidebar {
   position:fixed; left:0; top:0; bottom:0; width:var(--sidebar-w);
   background:var(--primary); display:flex; flex-direction:column; z-index:100;
@@ -73,8 +74,8 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 .btn-logout:hover { background:rgba(255,255,255,.2); color:#fff; }
 
 /* ── MAIN ── */
-#main { margin-left:var(--sidebar-w); min-height:100vh; }
-.page { display:none; padding:28px 32px 48px; }
+#main { margin-left:var(--sidebar-w); min-height:100vh; width:calc(100% - var(--sidebar-w)); }
+.page { display:none; padding:28px 32px 48px; width:100%; }
 .page.active { display:block; }
 .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
 .page-title { font-size:22px; font-weight:700; color:var(--primary); }
@@ -82,7 +83,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 
 /* ── CARDS ── */
 .card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,.06); }
-.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+.kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
 .kpi-card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border);
   box-shadow:0 1px 3px rgba(0,0,0,.06); }
 .kpi-label { font-size:12px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
@@ -94,12 +95,12 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 .kpi-card.blue .kpi-value { color:var(--info); }
 
 /* ── CHARTS ── */
-.charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:16px; margin-bottom:24px; }
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
 .chart-card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); }
 .chart-title { font-size:14px; font-weight:600; color:var(--text); margin-bottom:14px; }
 
 /* ── OCUPAÇÃO BARRAS ── */
-.ocupacao-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:24px; }
+.ocupacao-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
 .ocup-card { background:var(--card); border-radius:10px; padding:16px; border:1px solid var(--border); }
 .ocup-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
 .ocup-nome { font-size:13px; font-weight:700; color:var(--text); }
