@@ -733,31 +733,48 @@ function goTo(page) {
 
 // ── AUTH ───────────────────────────────────────────────────────────────────────
 async function login() {
-  const email = document.getElementById('login-email').value;
+  const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Informe e-mail e senha.'; return; }
   try {
     const fd = new FormData();
-    fd.append('username', email); fd.append('password', pass);
-    const r = await fetch(API+'/api/auth/token', {method:'POST', body:fd});
+    fd.append('username', email);
+    fd.append('password', pass);
+    const r = await fetch('/api/auth/token', { method: 'POST', body: fd });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || `Erro ${r.status}`);
+    }
     const data = await r.json();
-    if (!r.ok) throw new Error(data.detail||'Erro');
     TOKEN = data.access_token;
     ME = data.user;
     localStorage.setItem('pcp_token', TOKEN);
     localStorage.setItem('pcp_me', JSON.stringify(ME));
+
+    // Mostra o app imediatamente
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.display = 'block';
     document.getElementById('sidebar-nome').textContent = ME.nome;
     document.getElementById('sidebar-role').textContent = ME.role;
     document.getElementById('sidebar-avatar').textContent = ME.nome[0].toUpperCase();
-    const mes = new Date().toISOString().slice(0,7);
-    document.getElementById('dash-mes').value = mes;
-    document.getElementById('dem-mes').value = mes;
-    document.getElementById('real-mes').value = mes;
-    document.getElementById('ins-mes').value = mes;
-    try { await loadBaseData(); } catch(e) { console.warn('loadBaseData falhou:', e); }
-    loadDashboard();
-  } catch(e) { document.getElementById('login-error').textContent = e.message; }
+
+    // Preenche mês atual nos filtros
+    const mes = new Date().toISOString().slice(0, 7);
+    ['dash-mes','dem-mes','real-mes','ins-mes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = mes;
+    });
+
+    // Carrega dados em background — sem bloquear a exibição
+    loadBaseData().catch(e => console.warn('loadBaseData:', e));
+    loadDashboard().catch(e => console.warn('loadDashboard:', e));
+
+  } catch(e) {
+    errEl.textContent = e.message;
+    console.error('Login error:', e);
+  }
 }
 
 function logout() {
@@ -1316,7 +1333,7 @@ async function openSkuLinhas(skuId) {
     const ppm = vinc ? vinc.velocidade_ppm : '';
     const fph = vinc ? vinc.fardos_hora : '';
     return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${vinc||'':''?'10px':'0'};">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${vinc ? '10px' : '0'};">
         <input type="checkbox" id="sl-check-${l.linha_id}" onchange="toggleLinhaFields(${l.linha_id})" ${checked} style="width:16px;height:16px;cursor:pointer;">
         <label for="sl-check-${l.linha_id}" style="font-size:14px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text);">${l.linha_nome}</label>
         ${vinc ? `<span class="badge badge-green" style="font-size:10px;">Configurada</span>` : ''}
@@ -1556,14 +1573,15 @@ async function deactivateUser(id) {
 
 // ── INIT ───────────────────────────────────────────────────────────────────────
 if (TOKEN && ME) {
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('sidebar-nome').textContent=ME.nome;
-  document.getElementById('sidebar-role').textContent=ME.role;
-  document.getElementById('sidebar-avatar').textContent=ME.nome[0].toUpperCase();
-  const mes=new Date().toISOString().slice(0,7);
-  ['dash-mes','dem-mes','real-mes','ins-mes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=mes;});
-  loadBaseData().catch(e=>console.warn('loadBaseData init falhou:',e)).then(()=>loadDashboard());
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('sidebar-nome').textContent = ME.nome;
+  document.getElementById('sidebar-role').textContent = ME.role;
+  document.getElementById('sidebar-avatar').textContent = ME.nome[0].toUpperCase();
+  const mes = new Date().toISOString().slice(0,7);
+  ['dash-mes','dem-mes','real-mes','ins-mes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=mes; });
+  loadBaseData().catch(e => console.warn('loadBaseData init:', e));
+  loadDashboard().catch(e => console.warn('loadDashboard init:', e));
 }
 
 document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open')); });
