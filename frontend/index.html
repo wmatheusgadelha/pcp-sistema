@@ -398,7 +398,7 @@ textarea { resize:vertical; min-height:70px; }
       <div class="card">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Código</th><th>Descrição</th><th>Marca</th><th>Gramatura</th><th>Pkg/Fardo</th><th>Fardos/Palete</th><th>Linhas</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Código</th><th>Descrição</th><th>Marca</th><th>Gramatura</th><th>Pkg/Fardo</th><th>Fd/Palete</th><th>Linhas compatíveis</th><th>Ações</th></tr></thead>
             <tbody id="sku-tbody"></tbody>
           </table>
         </div>
@@ -580,6 +580,52 @@ textarea { resize:vertical; min-height:70px; }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-sku')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveSku()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gerenciar Linhas do SKU -->
+<div class="modal-overlay" id="modal-sku-linhas">
+  <div class="modal" style="width:620px;">
+    <div class="modal-header">
+      <span class="modal-title">🏭 Linhas de Produção — <span id="sl-sku-nome"></span></span>
+      <button class="modal-close" onclick="closeModal('modal-sku-linhas')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Selecione em quais linhas este SKU pode ser produzido e informe a velocidade.</p>
+    <div id="sl-linhas-list"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sku-linhas')">Fechar</button>
+      <button class="btn btn-primary" onclick="saveSkuLinhas()">💾 Salvar Linhas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gerenciar Formulação do SKU -->
+<div class="modal-overlay" id="modal-sku-form">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <span class="modal-title">🧪 Formulação — <span id="sf-sku-nome"></span></span>
+      <button class="modal-close" onclick="closeModal('modal-sku-form')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Defina quanto de cada insumo/MP é utilizado por kg de produto acabado.</p>
+    <!-- Formulação existente -->
+    <div id="sf-form-list" style="margin-bottom:18px;"></div>
+    <div class="sep"></div>
+    <!-- Adicionar novo item -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;">＋ Adicionar insumo</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;">
+      <div class="form-group" style="flex:2;">
+        <label>Insumo / Matéria-Prima *</label>
+        <select id="sf-insumo-id"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Qtd por kg de produto *</label>
+        <input type="number" id="sf-qtd" step="0.001" min="0" placeholder="0.950">
+      </div>
+      <button class="btn btn-success" style="margin-bottom:1px;" onclick="addFormulacaoItem()">Adicionar</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-sku-form')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1176,16 +1222,28 @@ function filterSkus() {
   );
   document.getElementById('sku-tbody').innerHTML = filtered.length===0
     ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum SKU encontrado</td></tr>`
-    : filtered.map(s=>`<tr>
-        <td><code style="font-size:12px;background:#f0f2f5;padding:2px 6px;border-radius:4px">${s.codigo}</code></td>
-        <td><strong>${s.descricao}</strong></td>
-        <td><span class="badge badge-blue">${s.marca||'—'}</span></td>
-        <td>${s.gramatura} kg</td>
-        <td>${s.pacotes_fardo}</td>
-        <td>${s.fardos_palete}</td>
-        <td>${s.linhas.filter(l=>l.is_active).map(l=>`<span class="badge badge-gray" style="font-size:10px;margin:1px">${l.linha?.nome||'L'+l.linha_id}</span>`).join('')||'—'}</td>
-        <td><button class="btn btn-sm btn-danger" onclick="deleteSku(${s.id})">🗑</button></td>
-      </tr>`).join('');
+    : filtered.map(s=>{
+        const linhasAtivas = s.linhas.filter(l=>l.is_active);
+        const temForm = s.formulacao && s.formulacao.length > 0;
+        return `<tr>
+          <td><code style="font-size:12px;background:#f0f2f5;padding:2px 6px;border-radius:4px">${s.codigo}</code></td>
+          <td><strong>${s.descricao}</strong></td>
+          <td><span class="badge badge-blue">${s.marca||'—'}</span></td>
+          <td>${s.gramatura} kg</td>
+          <td>${s.pacotes_fardo}</td>
+          <td>${s.fardos_palete}</td>
+          <td>
+            ${linhasAtivas.map(l=>`<span class="badge badge-gray" style="font-size:10px;margin:1px">${l.linha?.nome||'L'+l.linha_id}</span>`).join('')||'<span style="color:var(--text-muted);font-size:12px;">Nenhuma</span>'}
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:nowrap;">
+              <button class="btn btn-sm" style="background:#e8f4fd;color:#1a5276;font-size:11px;" title="Gerenciar Linhas" onclick="openSkuLinhas(${s.id})">🏭 Linhas</button>
+              <button class="btn btn-sm" style="background:${temForm?'#e8f8ed':'#fff3e0'};color:${temForm?'#1a5e3a':'#7e5109'};font-size:11px;" title="Formulação" onclick="openSkuFormulacao(${s.id})">🧪 ${temForm?'Formulação':'+ Formulação'}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteSku(${s.id})">🗑</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
 }
 
 let editSkuId = null;
@@ -1215,6 +1273,185 @@ async function deleteSku(id) {
   if (!confirm('Desativar este SKU?')) return;
   try { await api('DELETE',`/api/skus/${id}`); toast('SKU desativado','success'); loadSkus(); }
   catch(e) { toast(e.message,'error'); }
+}
+
+// ── SKU LINHAS ─────────────────────────────────────────────────────────────────
+let skuLinhasAtual = null; // SKU sendo editado no modal de linhas
+
+async function openSkuLinhas(skuId) {
+  const sku = allSkus.find(s => s.id === skuId);
+  if (!sku) return;
+  skuLinhasAtual = sku;
+  document.getElementById('sl-sku-nome').textContent = sku.descricao;
+
+  // Busca todas as linhas disponíveis via ocupação (usamos o endpoint de ocupação do mês atual como fonte de linhas)
+  // Na verdade vamos buscar a lista de linhas do banco via programacao/ocupacao
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  let todasLinhas = [];
+  try {
+    todasLinhas = await api('GET', `/api/programacao/ocupacao/${mesAtual}`) || [];
+  } catch(e) {}
+
+  // Linhas já vinculadas ao SKU
+  const linhasVinculadas = {};
+  sku.linhas.filter(l => l.is_active).forEach(l => {
+    linhasVinculadas[l.linha_id] = l;
+  });
+
+  const html = todasLinhas.map(l => {
+    const vinc = linhasVinculadas[l.linha_id];
+    const checked = vinc ? 'checked' : '';
+    const ppm = vinc ? vinc.velocidade_ppm : '';
+    const fph = vinc ? vinc.fardos_hora : '';
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:${vinc||'':''?'10px':'0'};">
+        <input type="checkbox" id="sl-check-${l.linha_id}" onchange="toggleLinhaFields(${l.linha_id})" ${checked} style="width:16px;height:16px;cursor:pointer;">
+        <label for="sl-check-${l.linha_id}" style="font-size:14px;font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text);">${l.linha_nome}</label>
+        ${vinc ? `<span class="badge badge-green" style="font-size:10px;">Configurada</span>` : ''}
+      </div>
+      <div id="sl-fields-${l.linha_id}" style="display:${vinc ? 'grid' : 'none'};grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+        <div class="form-group">
+          <label>Velocidade (PPM)</label>
+          <input type="number" step="0.1" id="sl-ppm-${l.linha_id}" value="${ppm}" placeholder="Ex: 30">
+        </div>
+        <div class="form-group">
+          <label>Fardos por Hora</label>
+          <input type="number" step="0.1" id="sl-fph-${l.linha_id}" value="${fph}" placeholder="Ex: 58.5">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('sl-linhas-list').innerHTML = html || '<p style="color:var(--text-muted);text-align:center;padding:20px;">Nenhuma linha cadastrada</p>';
+  // Salvar lista de IDs disponíveis para uso no save
+  document.getElementById('sl-linhas-list').dataset.linhas = JSON.stringify(todasLinhas.map(l => l.linha_id));
+  openModal('modal-sku-linhas');
+}
+
+function toggleLinhaFields(linhaId) {
+  const checked = document.getElementById(`sl-check-${linhaId}`).checked;
+  document.getElementById(`sl-fields-${linhaId}`).style.display = checked ? 'grid' : 'none';
+}
+
+async function saveSkuLinhas() {
+  if (!skuLinhasAtual) return;
+  const sku = skuLinhasAtual;
+  const linhaIds = JSON.parse(document.getElementById('sl-linhas-list').dataset.linhas || '[]');
+
+  let salvos = 0, erros = 0;
+  for (const linhaId of linhaIds) {
+    const checked = document.getElementById(`sl-check-${linhaId}`)?.checked;
+    const ppm = parseFloat(document.getElementById(`sl-ppm-${linhaId}`)?.value || '0');
+    const fph = parseFloat(document.getElementById(`sl-fph-${linhaId}`)?.value || '0');
+
+    if (checked) {
+      if (!ppm || !fph) { toast(`Preencha PPM e Fardos/h da linha ${linhaId}`, 'error'); return; }
+      try {
+        await api('POST', `/api/skus/${sku.id}/linhas`, { linha_id: linhaId, velocidade_ppm: ppm, fardos_hora: fph });
+        salvos++;
+      } catch(e) { erros++; }
+    } else {
+      // Se tinha vínculo ativo, desativa
+      const vinc = sku.linhas.find(l => l.linha_id === linhaId && l.is_active);
+      if (vinc) {
+        try { await api('DELETE', `/api/skus/${sku.id}/linhas/${vinc.id}`); }
+        catch(e) {}
+      }
+    }
+  }
+  closeModal('modal-sku-linhas');
+  toast(`Linhas salvas! (${salvos} configuradas)`, 'success');
+  loadSkus();
+}
+
+// ── SKU FORMULAÇÃO ─────────────────────────────────────────────────────────────
+let skuFormAtual = null;
+
+async function openSkuFormulacao(skuId) {
+  const sku = allSkus.find(s => s.id === skuId);
+  if (!sku) return;
+  skuFormAtual = sku;
+  document.getElementById('sf-sku-nome').textContent = sku.descricao;
+  document.getElementById('sf-qtd').value = '';
+  document.getElementById('sf-insumo-id').value = '';
+
+  // Carrega insumos disponíveis no select
+  try {
+    const insumos = await api('GET', '/api/insumos/') || [];
+    document.getElementById('sf-insumo-id').innerHTML =
+      '<option value="">Selecione o insumo...</option>' +
+      insumos.map(i => `<option value="${i.id}">${i.nome} (${i.unidade})</option>`).join('');
+  } catch(e) {}
+
+  await reloadFormulacaoList();
+  openModal('modal-sku-form');
+}
+
+async function reloadFormulacaoList() {
+  if (!skuFormAtual) return;
+  try {
+    const form = await api('GET', `/api/skus/${skuFormAtual.id}/formulacao`) || [];
+    const el = document.getElementById('sf-form-list');
+    if (form.length === 0) {
+      el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;background:#fafafa;border-radius:8px;">Nenhum insumo cadastrado ainda.</div>';
+      return;
+    }
+    const total = form.reduce((s, f) => s + f.qtd_por_kg, 0);
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:2px solid var(--border);background:#f8f9fa;">Insumo / MP</th>
+          <th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:2px solid var(--border);background:#f8f9fa;">Unidade</th>
+          <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:2px solid var(--border);background:#f8f9fa;">Qtd / kg produto</th>
+          <th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-muted);border-bottom:2px solid var(--border);background:#f8f9fa;">% na fórmula</th>
+          <th style="padding:8px 10px;border-bottom:2px solid var(--border);background:#f8f9fa;"></th>
+        </tr></thead>
+        <tbody>
+          ${form.map(f => `<tr>
+            <td style="padding:10px;border-bottom:1px solid var(--border);font-weight:600;">${f.insumo?.nome||'—'}</td>
+            <td style="padding:10px;border-bottom:1px solid var(--border);color:var(--text-muted);">${f.insumo?.unidade||'—'}</td>
+            <td style="padding:10px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--primary);">${f.qtd_por_kg.toFixed(4)}</td>
+            <td style="padding:10px;border-bottom:1px solid var(--border);text-align:right;">
+              <span class="badge badge-blue">${(f.qtd_por_kg/total*100).toFixed(1)}%</span>
+            </td>
+            <td style="padding:10px;border-bottom:1px solid var(--border);text-align:right;">
+              <button class="btn btn-sm btn-danger" onclick="removeFormItem(${f.id})">🗑</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr>
+          <td colspan="2" style="padding:10px;font-weight:700;color:var(--text-muted);">Total</td>
+          <td style="padding:10px;text-align:right;font-weight:800;color:${Math.abs(total-1)<0.005?'var(--success)':'var(--danger)'};">${total.toFixed(4)}</td>
+          <td colspan="2" style="padding:10px;font-size:12px;color:var(--text-muted);">${Math.abs(total-1)<0.005?'✅ Fórmula fecha em 1 kg':'⚠️ Total diferente de 1 kg'}</td>
+        </tr></tfoot>
+      </table>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function addFormulacaoItem() {
+  const insumoId = document.getElementById('sf-insumo-id').value;
+  const qtd = parseFloat(document.getElementById('sf-qtd').value);
+  if (!insumoId) { toast('Selecione um insumo', 'error'); return; }
+  if (!qtd || qtd <= 0) { toast('Informe a quantidade por kg', 'error'); return; }
+  try {
+    await api('POST', `/api/skus/${skuFormAtual.id}/formulacao`, { insumo_id: +insumoId, qtd_por_kg: qtd });
+    document.getElementById('sf-qtd').value = '';
+    document.getElementById('sf-insumo-id').value = '';
+    toast('Insumo adicionado!', 'success');
+    await reloadFormulacaoList();
+    loadSkus(); // Atualiza badge na tabela
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function removeFormItem(formId) {
+  if (!skuFormAtual) return;
+  if (!confirm('Remover este insumo da formulação?')) return;
+  try {
+    await api('DELETE', `/api/skus/${skuFormAtual.id}/formulacao/${formId}`);
+    toast('Removido', 'success');
+    await reloadFormulacaoList();
+    loadSkus();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ── INSUMOS ────────────────────────────────────────────────────────────────────
